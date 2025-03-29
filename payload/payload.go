@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"strings"
@@ -11,6 +12,20 @@ import (
 )
 
 const totalTime = 4096.0
+
+var DEFAULT_KEY_BYTES_INDICES = []int{33, 11, 30}
+
+func calculateFrameTime(keyBytes []int, indices []int) int {
+	// 初始化结果为1（乘法的初始值）
+	frameTime := 1
+	for _, index := range indices {
+		// keyBytes[index] % 16 的结果累乘
+		log.Println(frameTime, index, keyBytes[index], keyBytes[index]%16)
+		frameTime *= keyBytes[index] % 16
+	}
+	log.Println(keyBytes, indices, frameTime)
+	return frameTime
+}
 
 func GenerateHeader(path, method, key string, frames [][][]int) string {
 	keyBytes := []int{}
@@ -23,7 +38,9 @@ func GenerateHeader(path, method, key string, frames [][][]int) string {
 	timeNowBytes := timeToBytes(timeNow)
 
 	row := frames[keyBytes[5]%4][keyBytes[2]%16]
-	targetTime := float64(keyBytes[12]%16*(keyBytes[14]%16)*(keyBytes[7]%16)) / totalTime
+
+	frameTime := int(math.Round(float64(calculateFrameTime(keyBytes, DEFAULT_KEY_BYTES_INDICES))/10) * 10)
+	targetTime := float64(frameTime) / totalTime
 	fromColor := []float64{float64(row[0]), float64(row[1]), float64(row[2]), 1.0}
 	toColor := []float64{float64(row[3]), float64(row[4]), float64(row[5]), 1.0}
 	fromRotation := []float64{0.0}
